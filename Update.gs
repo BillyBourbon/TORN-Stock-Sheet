@@ -17,22 +17,27 @@ function setup(){
 }
 function run(){
   var key = sss.getSheetByName("Welcome").getRange("D3").getValue()
-  var stock_names= get_stock_names(key)
-  var transaction_ids = get_transactions(key,stock_names)
+  var x= get_stock_names(key)
+  var stock_names=x[0]
+  var prices = x[1]
+  var transaction_ids = get_transactions(key,stock_names,prices)
   }
 function log_transaction(output){
-  main.getRange(main.getLastRow()+1,1,1,output.length).setValues([output])
-  
-  
-  
+  var tran_id= output[1]
+  var finder= main.getRange("B:B").createTextFinder(tran_id).findNext()
+  if(finder==null){
+    main.getRange(main.getLastRow()+1,1,1,output.length).setValues([output])
+    Logger.log("New Entry")
+    }
   }
-function get_transactions(key,stock_names){
+function get_transactions(key,stock_names,prices){
   var call = JSON.parse(UrlFetchApp.fetch("https://api.torn.com/user/?selections=stocks&key="+key).getContentText())
   var data = call.stocks
   var transaction_ids=[]
   Logger.log(data)
   Object.keys(data).forEach(stock_id=>{
                             var name = stock_names[stock_id-1]
+                            var price = prices[stock_id-1]
                             var transactions = data[stock_id]["transactions"]
                             Object.keys(transactions).forEach(transaction_id=>{
                                                               transaction_ids.push(transaction_id)
@@ -41,8 +46,8 @@ function get_transactions(key,stock_names){
                                                               var buy_price = tran["bought_price"]
                                                               var shares = tran["shares"]
                                                               time_bought = Utilities.formatDate(new Date(time_bought*1000),"GMT","dd/MM/YY - HH:mm")
-                                                              var output=[stock_id,transaction_id,name,time_bought,buy_price,Number(shares)]
-                                                              log_transactions(output)
+                                                              var output=[stock_id,transaction_id,name,time_bought,buy_price,Number(shares),price]
+                                                              log_transaction(output)
                                                               Logger.log(output)
                                                               })
                                        })
@@ -54,9 +59,12 @@ function get_stock_names(key){
   var call = JSON.parse(UrlFetchApp.fetch("https://api.torn.com/torn/?selections=stocks&key="+key).getContentText())
   var data = call.stocks
   var stock_names = []
+  var prices= []
   Object.keys(data).forEach(i=>{
                             var name = data[i]["name"]
+                            var price = data[i]["current_price"]
+                            prices.push(price)
                             stock_names.push(name)
   })
-  return(stock_names)
+  return([stock_names,prices])
   }
